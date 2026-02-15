@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  smoke-operator-api:
+  smoke-all:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,20 +22,94 @@ jobs:
           version: v3.13.3
       - name: Add curl pod
         run: kubectl run curl --image=curlimages/curl:8.5.0 --restart=Never --command -- sleep 3600
-      - name: Deploy reference-db
+      - name: Deploy Postgres databases
         run: |
-          helm upgrade --install refdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432
+          helm upgrade --install refdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=reference_db
+          helm upgrade --install tripdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=trip_db
+          helm upgrade --install batchdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=batch_db
+          helm upgrade --install orderdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=order_db
+          helm upgrade --install operatordb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=operator_db
+          helm upgrade --install mobilegwdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=mobile_gateway_db
           kubectl rollout status statefulset/refdb-reference-db --timeout=120s
+          kubectl rollout status statefulset/tripdb-reference-db --timeout=120s
+          kubectl rollout status statefulset/batchdb-reference-db --timeout=120s
+          kubectl rollout status statefulset/orderdb-reference-db --timeout=120s
+          kubectl rollout status statefulset/operatordb-reference-db --timeout=120s
+          kubectl rollout status statefulset/mobilegwdb-reference-db --timeout=120s
       - name: Deploy operator-api
         run: |
           helm upgrade --install operator charts/operator-api \
             --values charts/operator-api/values.yaml \
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/operator-api \
             --set image.tag=latest \
-            --set secrets.operatorDsn=postgres://postgres:postgres@refdb-reference-db:5432/postgres?sslmode=disable \
+            --set secrets.operatorDsn=postgres://postgres:postgres@operatordb-reference-db:5432/operator_db?sslmode=disable \
+            --set secrets.tripDsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
+            --set secrets.batchDsn=postgres://postgres:postgres@batchdb-reference-db:5432/batch_db?sslmode=disable \
             --set refmtls.enabled=\"false\" \
             --set kafka.brokers[0]=kafka:9092
           kubectl rollout status deployment/operator-operator-api --timeout=120s
-      - name: Smoke healthz
+      - name: Deploy order-service
+        run: |
+          helm upgrade --install orders charts/order-service \
+            --values charts/order-service/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/order-service \
+            --set image.tag=latest \
+            --set secrets.dbDsn=postgres://postgres:postgres@orderdb-reference-db:5432/order_db?sslmode=disable \
+            --set kafka.brokers[0]=kafka:9092
+          kubectl rollout status deployment/orders-order-service --timeout=120s
+      - name: Deploy routing-service
+        run: |
+          helm upgrade --install routing charts/routing-service \
+            --values charts/routing-service/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/routing-service \
+            --set image.tag=latest \
+            --set secrets.tripDsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
+            --set secrets.refDsn=postgres://postgres:postgres@refdb-reference-db:5432/reference_db?sslmode=disable \
+            --set kafka.brokers[0]=kafka:9092
+          kubectl rollout status deployment/routing-routing-service --timeout=120s
+      - name: Deploy batching-service
+        run: |
+          helm upgrade --install batching charts/batching-service \
+            --values charts/batching-service/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/batching-service \
+            --set image.tag=latest \
+            --set secrets.dbDsn=postgres://postgres:postgres@batchdb-reference-db:5432/batch_db?sslmode=disable \
+            --set kafka.brokers[0]=kafka:9092
+          kubectl rollout status deployment/batching-batching-service --timeout=120s
+      - name: Deploy tracking-service
+        run: |
+          helm upgrade --install tracking charts/tracking-service \
+            --values charts/tracking-service/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/tracking-service \
+            --set image.tag=latest \
+            --set secrets.dsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
+            --set kafka.brokers[0]=kafka:9092
+          kubectl rollout status deployment/tracking-tracking-service --timeout=120s
+      - name: Deploy mobile-gateway
+        run: |
+          helm upgrade --install mobgw charts/mobile-gateway \
+            --values charts/mobile-gateway/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/mobile-gateway \
+            --set image.tag=latest \
+            --set secrets.dbDsn=postgres://postgres:postgres@mobilegwdb-reference-db:5432/mobile_gateway_db?sslmode=disable \
+            --set kafka.brokers[0]=kafka:9092
+          kubectl rollout status deployment/mobgw-mobile-gateway --timeout=120s
+      - name: Deploy reference-service
+        run: |
+          helm upgrade --install refsvc charts/reference-service \
+            --values charts/reference-service/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/reference-service \
+            --set image.tag=latest \
+            --set secrets.dbDsn=postgres://postgres:postgres@refdb-reference-db:5432/reference_db?sslmode=disable \
+            --set secrets.authHs256Secret=dummy \
+            --set redpanda.brokers=redpanda:9092
+          kubectl rollout status deployment/refsvc-reference-service --timeout=120s
+      - name: Smoke healthz all services
         run: |
           kubectl exec curl -- curl -sS operator-operator-api:8090/healthz
+          kubectl exec curl -- curl -sS orders-order-service:8080/healthz
+          kubectl exec curl -- curl -sS routing-routing-service:8081/healthz
+          kubectl exec curl -- curl -sS batching-batching-service:8083/healthz
+          kubectl exec curl -- curl -sS tracking-tracking-service:8087/healthz
+          kubectl exec curl -- curl -sS mobgw-mobile-gateway:8088/healthz
+          kubectl exec curl -- curl -sS refsvc-reference-service:8084/healthz
