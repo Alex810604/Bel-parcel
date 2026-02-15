@@ -21,7 +21,6 @@ otlp:
   endpoint: ""
 secrets:
   tripDsn: postgres://user:pass@postgres:5432/trip_db?sslmode=disable
-  refDsn: postgres://user:pass@postgres:5432/reference_db?sslmode=disable
 resources:
   requests:
     memory: "128Mi"

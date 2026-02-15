@@ -26,12 +26,14 @@ jobs:
         run: |
           helm upgrade --install refdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=reference_db
           helm upgrade --install tripdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=trip_db
+          helm upgrade --install trackingdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=tracking_db
           helm upgrade --install batchdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=batch_db
           helm upgrade --install orderdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=order_db
           helm upgrade --install operatordb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=operator_db
           helm upgrade --install mobilegwdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=mobile_gateway_db
           kubectl rollout status statefulset/refdb-reference-db --timeout=120s
           kubectl rollout status statefulset/tripdb-reference-db --timeout=120s
+          kubectl rollout status statefulset/trackingdb-reference-db --timeout=120s
           kubectl rollout status statefulset/batchdb-reference-db --timeout=120s
           kubectl rollout status statefulset/orderdb-reference-db --timeout=120s
           kubectl rollout status statefulset/operatordb-reference-db --timeout=120s
@@ -64,7 +66,6 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/routing-service \
             --set image.tag=latest \
             --set secrets.tripDsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
-            --set secrets.refDsn=postgres://postgres:postgres@refdb-reference-db:5432/reference_db?sslmode=disable \
             --set kafka.brokers[0]=kafka:9092
           kubectl rollout status deployment/routing-routing-service --timeout=120s
       - name: Deploy batching-service
@@ -82,7 +83,7 @@ jobs:
             --values charts/tracking-service/values.yaml \
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/tracking-service \
             --set image.tag=latest \
-            --set secrets.dsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
+            --set secrets.dsn=postgres://postgres:postgres@trackingdb-reference-db:5432/tracking_db?sslmode=disable \
             --set kafka.brokers[0]=kafka:9092
           kubectl rollout status deployment/tracking-tracking-service --timeout=120s
       - name: Deploy mobile-gateway

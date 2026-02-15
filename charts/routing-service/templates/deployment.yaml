@@ -33,11 +33,6 @@ spec:
             secretKeyRef:
               name: {{ .Release.Name }}-routing-service-secrets
               key: trip_dsn
-        - name: DB_REFDSN
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Release.Name }}-routing-service-secrets
-              key: ref_dsn
         - name: KAFKA_BROKERS
           value: "{{ .Values.kafka.brokers | join \",\" }}"
         - name: KAFKA_TIMEOUT
@@ -61,4 +56,3 @@ spec:
             port: 8081
         resources:
 {{ toYaml .Values.resources | indent 10 }}
-

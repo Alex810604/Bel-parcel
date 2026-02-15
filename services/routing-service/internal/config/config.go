@@ -13,7 +13,6 @@ type Config struct {
 	}
 	DB struct {
 		TripDSN string
-		RefDSN  string
 	}
 	Kafka struct {
 		Brokers       []string
@@ -32,7 +31,6 @@ func Load() (*Config, error) {
 
 	v.SetDefault("server.port", "8081")
 	v.SetDefault("db.tripdsn", "postgres://user:pass@localhost:5432/trip_db?sslmode=disable")
-	v.SetDefault("db.refdsn", "postgres://user:pass@localhost:5432/reference_db?sslmode=disable")
 	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
 	v.SetDefault("kafka.groupid", "routing-service")

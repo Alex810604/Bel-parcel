@@ -14,7 +14,7 @@ kafka:
 otlp:
   endpoint: ""
 secrets:
-  dsn: postgres://user:pass@postgres:5432/trip_db?sslmode=disable
+  dsn: postgres://user:pass@postgres:5432/tracking_db?sslmode=disable
 resources:
   requests:
     memory: "128Mi"
