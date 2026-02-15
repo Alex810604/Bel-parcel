@@ -1,0 +1,65 @@
+run:
+  timeout: 5m
+  tests: true
+  allow-parallel-runners: true
+  go: "1.22"
+  modules-download-mode: readonly
+  skip-dirs:
+    - vendor
+    - node_modules
+    - web
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+  # Reduce noise from generated or non-Go tooling files
+  exclude:
+    - "^//go:generate"
+  exclude-rules:
+    # Keep tests pragmatic: relax some checks in *_test.go
+    - path: _test\.go
+      linters:
+        - errcheck
+        - revive
+        - gofmt
+    # Ignore overly verbose error construction rules in kafka wrappers
+    - path: internal/infra/kafka/.*\.go
+      linters:
+        - goerr113
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - gosimple
+    - revive
+    - errcheck
+    - ineffassign
+    - gofmt
+    - typecheck
+    - unused
+  disable:
+    - lll
+    - depguard
+    - wsl
+    - gocyclo
+    - dupl
+    - varnamelen
+    - funlen
+
+linters-settings:
+  revive:
+    rules:
+      - name: indent-error-flow
+      - name: error-return
+      - name: empty-lines
+      - name: var-declaration
+      # Do not force doc comments to avoid noisy diffs
+      - name: exported
+        disabled: true
+  gofmt:
+    simplify: true
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
