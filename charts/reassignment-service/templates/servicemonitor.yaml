@@ -1,0 +1,26 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-reassignment-service
+  labels:
+    app: reassignment-service
+    {{- with .Values.monitoring.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: reassignment-service
+  namespaceSelector:
+    {{- if .Values.monitoring.namespace }}
+    matchNames:
+      - {{ .Values.monitoring.namespace }}
+    {{- else }}
+    any: true
+    {{- end }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.monitoring.interval }}
+{{- end }}

@@ -1,0 +1,27 @@
+replicaCount: 2
+image:
+  repository: registry.example.com/batching-service
+  tag: v0.1.0
+  pullPolicy: IfNotPresent
+service:
+  port: 8083
+kafka:
+  brokers:
+    - localhost:9092
+  groupId: batching-service
+  consumeTopics:
+    - orders.created
+  produceTopic: batches.formed
+  timeout: 5s
+otlp:
+  endpoint: ""
+secrets:
+  dbDsn: postgres://user:pass@postgres:5432/batch_db?sslmode=disable
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+

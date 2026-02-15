@@ -1,0 +1,25 @@
+replicaCount: 2
+image:
+  repository: your-registry/reference-service
+  tag: v1.0.0
+  pullPolicy: IfNotPresent
+service:
+  port: 8084
+redpanda:
+  brokers: "redpanda:9092"
+kafka:
+  topic: "events.reference_updated"
+auth:
+  issuer: "bp"
+  audience: "operator"
+secrets:
+  authHs256Secret: "CHANGE_ME"
+  dbDsn: "postgres://user:pass@reference-db:5432/reference_db?sslmode=disable"
+resources: {}
+ingress:
+  enabled: true
+  host: reference.prod.example.com
+  tlsSecretName: "reference-service-tls"
+  mtls:
+    enabled: true
+    secretName: "reference-client-ca"

@@ -1,0 +1,1 @@
+ALTER TABLE trips ALTER COLUMN carrier_id SET NOT NULL;

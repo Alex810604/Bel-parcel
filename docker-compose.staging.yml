@@ -1,0 +1,8 @@
+services:
+  reference-service:
+    env_file:
+      - .env.staging
+    ports:
+      - "8084:8084"
+  reference-db:
+    ports: []

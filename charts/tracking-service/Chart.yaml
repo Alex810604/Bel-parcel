@@ -1,0 +1,7 @@
+apiVersion: v2
+name: tracking-service
+description: Helm chart for tracking-service
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+

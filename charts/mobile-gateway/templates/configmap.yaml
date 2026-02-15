@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-mobile-gateway-config
+data:
+  KAFKA_TOPICPICKEDUP: "{{ .Values.kafka.topicPickedUp }}"
+  KAFKA_TOPICDELIVEREDTOPVP: "{{ .Values.kafka.topicDeliveredToPVP }}"
+  KAFKA_TOPICRECEIVEDBYPVP: "{{ .Values.kafka.topicReceivedByPVP }}"

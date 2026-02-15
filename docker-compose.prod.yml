@@ -1,0 +1,7 @@
+services:
+  reference-service:
+    env_file:
+      - .env.prod
+    ports: []
+  reference-db:
+    ports: []

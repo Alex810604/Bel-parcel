@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-reference-service
+  labels:
+    app: reference-service
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: reference-service
+  template:
+    metadata:
+      labels:
+        app: reference-service
+    spec:
+      containers:
+      - name: reference-service
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        env:
+        - name: SERVER_PORT
+          value: "{{ .Values.service.port }}"
+        - name: REDPANDA_BROKERS
+          value: "{{ .Values.redpanda.brokers }}"
+        - name: KAFKA_TOPIC
+          value: "{{ .Values.kafka.topic }}"
+        - name: AUTH_ISSUER
+          value: "{{ .Values.auth.issuer }}"
+        - name: AUTH_AUDIENCE
+          value: "{{ .Values.auth.audience }}"
+        - name: AUTH_HS256SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-reference-service-secrets
+              key: auth_hs256secret
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-reference-service-secrets
+              key: db_dsn
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.service.port }}
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: {{ .Values.service.port }}
+          initialDelaySeconds: 5
+        resources:
+{{ toYaml .Values.resources | indent 10 }}

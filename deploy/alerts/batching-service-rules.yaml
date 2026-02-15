@@ -1,0 +1,18 @@
+groups:
+  - name: batching-service
+    rules:
+      - alert: BatchOutboxGrowing
+        expr: batch_outbox_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Очередь исходящих событий batching-service растёт"
+          description: "В очереди {{ $value }} событий. Проверьте доступность Кафка и производительность сети."
+      - alert: BatchDLQNotEmpty
+        expr: batch_dlq_size > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "События в мёртвой очереди batching-service"
+          description: "В мёртвой очереди {{ $value }} событий, требующих ручной обработки."

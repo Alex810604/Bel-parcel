@@ -1,0 +1,65 @@
+{
+  "uid": "tracking-service",
+  "title": "Tracking-Service",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Активные алерты (всего)",
+      "targets": [
+        { "expr": "tracking_active_alerts", "legendFormat": "active_alerts" }
+      ],
+      "id": 1
+    },
+    {
+      "type": "graph",
+      "title": "Отклонения от маршрута (за час)",
+      "targets": [
+        { "expr": "rate(tracking_route_deviations_total[1h])", "legendFormat": "route_deviation" }
+      ],
+      "id": 2
+    },
+    {
+      "type": "graph",
+      "title": "Опоздания водителей (за час)",
+      "targets": [
+        { "expr": "rate(tracking_late_drivers_total[1h])", "legendFormat": "driver_late" }
+      ],
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Подключенные операторы",
+      "targets": [
+        { "expr": "tracking_websocket_connections", "legendFormat": "ws_connections" }
+      ],
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "Размер очереди Outbox",
+      "targets": [
+        { "expr": "tracking_outbox_queue_size", "legendFormat": "outbox_queue" }
+      ],
+      "id": 5
+    },
+    {
+      "type": "stat",
+      "title": "Размер мёртвой очереди",
+      "targets": [
+        { "expr": "tracking_dlq_size", "legendFormat": "dlq_size" }
+      ],
+      "id": 6
+    },
+    {
+      "type": "graph",
+      "title": "GPS обновления (за час)",
+      "targets": [
+        { "expr": "rate(tracking_gps_updates_total[1h])", "legendFormat": "gps_updates" }
+      ],
+      "id": 7
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}

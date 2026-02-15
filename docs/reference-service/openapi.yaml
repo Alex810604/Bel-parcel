@@ -1,0 +1,146 @@
+openapi: 3.0.3
+info:
+  title: Reference Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8084
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    SearchResultPVZ:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        address: { type: string }
+        location_lat: { type: number, format: double }
+        location_lng: { type: number, format: double }
+        is_hub: { type: boolean }
+    SearchResultCarrier:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        is_active: { type: boolean }
+        last_seen: { type: string, format: date-time }
+    SearchResultWarehouse:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        address: { type: string }
+        location_lat: { type: number, format: double }
+        location_lng: { type: number, format: double }
+security:
+  - bearerAuth: []
+paths:
+  /{type}:
+    get:
+      summary: Search reference entities
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [pvz, carriers, warehouses]
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResultPVZ'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResultCarrier'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResultWarehouse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /pvp/{id}:
+    put:
+      summary: Update PVZ hub flag
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_hub:
+                  type: boolean
+                reason:
+                  type: string
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /carriers/{id}:
+    put:
+      summary: Update carrier active flag
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+                reason:
+                  type: string
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

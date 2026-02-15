@@ -1,0 +1,50 @@
+groups:
+  - name: reference-service
+    rules:
+      - alert: ReferenceServiceHighErrorRate
+        expr: rate(reference_requests_total{code=~"5.."}[5m]) / rate(reference_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: reference-service
+        annotations:
+          summary: "High error rate in reference-service"
+          description: "{{ $value | humanizePercentage }} of requests are failing"
+      - alert: ReferenceServiceKafkaFailures
+        expr: increase(reference_events_failed_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+          service: reference-service
+        annotations:
+          summary: "Kafka publication failures in reference-service"
+          description: "{{ $value }} events failed to publish"
+      - alert: ReferenceServiceOutboxBacklog
+        expr: reference_outbox_pending > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: reference-service
+        annotations:
+          summary: "Outbox backlog size is high"
+          description: "Pending events in outbox exceed threshold"
+      - alert: ReferenceServiceOutboxLatency
+        expr: histogram_quantile(0.95, rate(reference_outbox_event_age_seconds_bucket[5m])) > 60
+        for: 5m
+        labels:
+          severity: warning
+          service: reference-service
+        annotations:
+          summary: "Outbox event age p95 is high"
+          description: "p95 age of events before publish exceeds 60s"
+  - name: operator-api
+    rules:
+      - alert: OperatorAPIHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="operator-api"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: operator-api
+        annotations:
+          summary: "High latency in operator-api"
+          description: "95th percentile latency is {{ $value }} seconds"

@@ -1,0 +1,20 @@
+image:
+  repository: postgres
+  tag: "15"
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+storage:
+  size: 50Gi
+  storageClassName: "fast-ssd"
+service:
+  port: 5432
+postgres:
+  db: reference_db
+  user: user
+  password: pass

@@ -1,0 +1,25 @@
+replicaCount: 1
+image:
+  repository: reference-service
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  port: 8084
+redpanda:
+  brokers: "redpanda:9092"
+kafka:
+  topic: "events.reference_updated"
+auth:
+  issuer: "bp"
+  audience: "operator"
+secrets:
+  authHs256Secret: ""
+  dbDsn: ""
+resources: {}
+ingress:
+  enabled: true
+  host: reference.example.com
+  tlsSecretName: ""
+  mtls:
+    enabled: false
+    secretName: ""

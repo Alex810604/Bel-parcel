@@ -1,0 +1,45 @@
+name: Deploy reassignment-service
+
+on:
+  push:
+    paths:
+      - 'charts/reassignment-service/**'
+      - '.github/workflows/deploy-reassignment.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+      - name: Configure kubeconfig
+        shell: bash
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          printf "%s" "$KUBE_CONFIG" > ~/.kube/config
+      - name: Helm upgrade/install
+        shell: bash
+        env:
+          IMAGE_REPO: ${{ secrets.REGISTRY }}/reassignment-service
+          IMAGE_TAG: ${{ github.sha }}
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          helm upgrade --install reassignment-service ./charts/reassignment-service \
+            --namespace "${KUBE_NAMESPACE}" \
+            --create-namespace \
+            -f ./charts/reassignment-service/values-prod.yaml \
+            --set image.repository="${IMAGE_REPO}" \
+            --set image.tag="${IMAGE_TAG}"

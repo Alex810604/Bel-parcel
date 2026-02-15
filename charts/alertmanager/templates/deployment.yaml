@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    app: alertmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+      - name: alertmanager
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - '--config.file=/etc/alertmanager/alertmanager.yml'
+          - '--storage.path=/alertmanager'
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/alertmanager/alertmanager.yml
+          subPath: alertmanager.yml
+        - name: templates
+          mountPath: /etc/alertmanager/templates/slack.tmpl
+          subPath: slack.tmpl
+        - name: secrets
+          mountPath: /etc/alertmanager/secrets/slack_webhook
+          subPath: slack_webhook
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.service.port }}
+          initialDelaySeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.service.port }}
+          initialDelaySeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Release.Name }}-alertmanager-config
+      - name: templates
+        configMap:
+          name: {{ .Release.Name }}-alertmanager-templates
+      - name: secrets
+        secret:
+          secretName: {{ .Release.Name }}-alertmanager-secrets

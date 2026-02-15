@@ -1,0 +1,38 @@
+name: Kind deploy reassignment-service (demo)
+
+on:
+  push:
+    paths:
+      - 'charts/reassignment-service/**'
+      - '.github/workflows/kind-deploy-reassignment.yml'
+  workflow_dispatch:
+
+jobs:
+  kind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup kind
+        uses: helm/kind-action@v1.10.0
+        with:
+          version: v0.22.0
+          node_image: kindest/node:v1.29.2
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+      - name: Create demo secrets
+        shell: bash
+        run: |
+          openssl req -x509 -nodes -days 1 -newkey rsa:2048 -subj "/CN=reassignment.example.com" -keyout server.key -out server.crt
+          kubectl create secret tls reassignment-tls --cert=server.crt --key=server.key
+          cp server.crt ca.crt
+          kubectl create secret generic mtls-client-ca --from-file=ca.crt=ca.crt
+      - name: Helm install (demo)
+        run: |
+          helm upgrade --install reassignment-service ./charts/reassignment-service \
+            -f ./charts/reassignment-service/values-prod.yaml \
+            --set image.repository="ghcr.io/${{ github.repository_owner }}/reassignment-service" \
+            --set image.tag="${{ github.sha }}"
+      - name: Show resources
+        run: |
+          kubectl get all

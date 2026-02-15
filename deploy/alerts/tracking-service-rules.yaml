@@ -1,0 +1,35 @@
+groups:
+  - name: tracking-service
+    rules:
+      - alert: TrackingNoWebSocketConnections
+        expr: tracking_websocket_connections == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Нет подключённых операторов
+          description: В течение 5 минут нет активных WebSocket подключений операторов
+      - alert: TrackingHighAlertRate
+        expr: rate(tracking_active_alerts[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Слишком много алертов
+          description: Высокая скорость возникновения алертов — проверьте бизнес-логику
+      - alert: TrackingDLQNotEmpty
+        expr: tracking_dlq_size > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Мёртвая очередь не пуста
+          description: Алерты не доставляются, есть элементы в DLQ
+      - alert: TrackingNoGPSUpdates
+        expr: rate(tracking_gps_updates_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Нет обновлений координат
+          description: Не приходят события местоположения перевозчиков за последние 10 минут

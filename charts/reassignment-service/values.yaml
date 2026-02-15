@@ -1,0 +1,44 @@
+replicaCount: 2
+image:
+  repository: registry.example.com/reassignment-service
+  tag: v0.1.0
+  pullPolicy: IfNotPresent
+service:
+  port: 8082
+ingress:
+  enabled: false
+  host: reassignment.example.com
+  tlsSecretName: ""
+  mtls:
+    enabled: false
+    secretName: ""
+kafka:
+  brokers:
+    - localhost:9092
+  timeout: 5s
+  commandTopic: commands.trip.reassign
+  groupId: reassignment-service
+  consumeTopics:
+    - trips.assigned
+    - trips.confirmed
+    - trips.declined
+    - commands.trip.reassign
+worker:
+  interval: 1m
+  confirmationTimeout: 2h
+otlp:
+  endpoint: ""
+secrets:
+  dbReassignmentDsn: postgres://user:pass@postgres:5432/reassignment_db?sslmode=disable
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+monitoring:
+  enabled: false
+  interval: 15s
+  labels: {}
+  namespace: ""

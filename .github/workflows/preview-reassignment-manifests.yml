@@ -1,0 +1,28 @@
+name: Preview reassignment-service manifests
+
+on:
+  push:
+    paths:
+      - 'charts/reassignment-service/**'
+      - '.github/workflows/preview-reassignment-manifests.yml'
+  workflow_dispatch:
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+      - name: Render manifests
+        run: |
+          helm template reassignment-service ./charts/reassignment-service \
+            -f ./charts/reassignment-service/values-prod.yaml \
+            --set image.repository="ghcr.io/${{ github.repository_owner }}/reassignment-service" \
+            --set image.tag="${{ github.sha }}" > manifests.yaml
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reassignment-manifests
+          path: manifests.yaml

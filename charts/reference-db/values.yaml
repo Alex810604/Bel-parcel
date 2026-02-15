@@ -1,0 +1,13 @@
+image:
+  repository: postgres
+  tag: "15"
+  pullPolicy: IfNotPresent
+resources: {}
+storage:
+  size: 10Gi
+service:
+  port: 5432
+postgres:
+  db: reference_db
+  user: user
+  password: pass

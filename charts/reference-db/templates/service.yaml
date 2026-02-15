@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-reference-db
+  labels:
+    app: reference-db
+spec:
+  type: ClusterIP
+  selector:
+    app: reference-db
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: postgres

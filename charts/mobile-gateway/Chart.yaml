@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mobile-gateway
+description: Helm chart for mobile-gateway
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

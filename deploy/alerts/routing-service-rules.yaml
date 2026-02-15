@@ -1,0 +1,26 @@
+groups:
+  - name: routing-service
+    rules:
+      - alert: OutboxStuckEvents
+        expr: outbox_errors_total{status="error"} > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "События зависли в исходящей очереди"
+          description: "Обнаружено {{ $value }} событий, которые не удаётся отправить в Кафка более 2 минут"
+      - alert: DeadLetterQueueNotEmpty
+        expr: dead_letter_queue_size > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "События в мёртвой очереди"
+          description: "В мёртвой очереди {{ $value }} событий, требующих ручной обработки"
+      - alert: OutboxQueueGrowing
+        expr: outbox_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Очередь исходящих событий растёт"
+          description: "В очереди {{ $value }} событий. Проверьте доступность Кафка и производительность сети."

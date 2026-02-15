@@ -1,0 +1,31 @@
+replicaCount: 2
+image:
+  repository: registry.example.com/routing-service
+  tag: v0.1.0
+  pullPolicy: IfNotPresent
+service:
+  port: 8081
+ingress:
+  enabled: true
+  host: routing.example.com
+kafka:
+  brokers:
+    - localhost:9092
+  timeout: 5s
+  groupId: routing-service
+  consumeTopics:
+    - batches.formed
+    - commands.trip.reassign
+  produceTopic: trips.assigned
+otlp:
+  endpoint: ""
+secrets:
+  tripDsn: postgres://user:pass@postgres:5432/trip_db?sslmode=disable
+  refDsn: postgres://user:pass@postgres:5432/reference_db?sslmode=disable
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"

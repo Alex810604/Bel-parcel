@@ -1,0 +1,6 @@
+scrape_configs:
+  - job_name: 'reference-service'
+    static_configs:
+      - targets: ['reference-service:8084']
+    scrape_interval: 15s
+    scrape_timeout: 10s

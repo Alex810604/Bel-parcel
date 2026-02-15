@@ -1,0 +1,9 @@
+services:
+  reference-service:
+    env_file:
+      - .env.dev
+    ports:
+      - "8084:8084"
+  reference-db:
+    ports:
+      - "5435:5432"

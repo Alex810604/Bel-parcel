@@ -1,0 +1,121 @@
+BelParcel — операции по сервисам и приложениям
+
+Общее
+- Инфраструктура: PostgreSQL, Kafka, OTLP (Jaeger), Kubernetes (Helm).
+- Observability: /metrics (Prometheus), OTLP endpoint (Jaeger), structured logging.
+- Health: /healthz и /readyz во всех HTTP-сервисах.
+- Graceful shutdown: по SIGINT/SIGTERM — остановка consumer/producer/HTTP и закрытие соединений.
+- Запуск зависимостей локально: docker compose up -d (PostgreSQL, Redpanda).
+
+Переменные окружения (часто используемые)
+- SERVER_PORT — порт HTTP сервиса.
+- DB_DSN — строка подключения к PostgreSQL.
+- KAFKA_BROKERS — список брокеров Kafka API, напр. localhost:9092.
+- REDPANDA_BROKERS — альтернативный ключ брокеров (эквивалентно KAFKA_BROKERS).
+- KAFKA_GROUPID — id consumer-группы.
+- KAFKA_TOPIC — основной топик потребления.
+- KAFKA_TIMEOUT — таймаут операций Kafka.
+- OTLP_ENDPOINT — адрес OTLP (напр. http://localhost:4318).
+- Специфичные: AUTH_HS256SECRET (operator-api).
+
+operator-api
+- Назначение: HTTP API для операторской панели, JWT (HS256) + RBAC, публикация команд в Kafka.
+- Запуск: из каталога services/operator-api:
+  - go build ./cmd/operator-api и запуск бинарника, либо go run ./cmd/operator-api
+  - Требуемые env: SERVER_PORT, DB_DSN, KAFKA_BROKERS, AUTH_HS256SECRET (обязателен, не пустой).
+- Управление:
+  - Старт/стоп: запуск процесса, остановка Ctrl+C.
+  - Наблюдение: /metrics, /healthz, /readyz; логи в stdout.
+  - Безопасность: Ingress с TLS/mTLS в Helm; секреты через Kubernetes Secret.
+- Интеграции:
+  - Публикация команд в Kafka, напр. commands.trip.reassign.
+
+order-service
+- Назначение: обработка заказов, событий доставки, DLQ для ошибок.
+- Запуск: services/order-service (go build/run).
+- Управление:
+  - Наблюдение: /metrics, /healthz, /readyz; логи.
+  - Kafka: consumer/producer, DLQ при ошибках обработки.
+- Конфигурация: DB_DSN, KAFKA_*, OTLP_ENDPOINT.
+
+batching-service
+- Назначение: формирование партий из заказов, потребление событий, DLQ реализован.
+- Запуск: services/batching-service (go build/run).
+- Управление: /metrics, /healthz, /readyz; логи; Kafka consumer.
+- Конфигурация: DB_DSN, KAFKA_*, OTLP_ENDPOINT.
+
+routing-service
+- Назначение: маршрутизация рейсов, публикация событий, поддержка Ingress и NetworkPolicy в Helm.
+- Запуск: services/routing-service (go build/run).
+- Управление: /metrics, /healthz, /readyz; логи; Kafka consumer/producer.
+- Конфигурация: DB_DSN, KAFKA_*, OTLP_ENDPOINT, провайдер маршрутизации (в будущем).
+
+reassignment-service
+- Назначение: переназначение рейсов (автоматически и по командам оператора).
+- Запуск: services/reassignment-service (go build/run).
+- Управление:
+  - Потребляет команды из Kafka: commands.trip.reassign.
+  - Выполняет HandleManualReassign, публикует событие trip.reassigned (sync producer).
+  - /metrics, /healthz, /readyz; логи.
+- Конфигурация: DB_DSN, KAFKA_*, OTLP_ENDPOINT.
+
+pickup-point-service
+- Назначение: операции ПВЗ (приём партий и т. п.).
+- Запуск: services/pickup-point-service (go build/run).
+- Управление: /metrics, /healthz, /readyz; логи; Kafka.
+- Конфигурация: DB_DSN, KAFKA_*, OTLP_ENDPOINT.
+
+tracking-service
+- Назначение: GPS-трекинг перевозчиков, хранение координат, выдача данных для UI.
+- Запуск: services/tracking-service (go build/run).
+- Управление:
+  - Потребляет Kafka: events.carrier_location.
+  - Сохраняет координаты в carrier_locations(trip_id, lat, lng, updated_at), только для IN_TRANSIT.
+  - API: GET /locations — последние координаты активных рейсов.
+  - WebSocket: GET /ws/locations — обновления в реальном времени.
+  - Наблюдение: /metrics, /healthz, /readyz; логи.
+- Конфигурация: SERVER_PORT, DB_DSN, KAFKA_*, OTLP_ENDPOINT.
+- Безопасность: Helm NetworkPolicy ограничивает доступ (Ingress/HTTP, Egress к PostgreSQL и Kafka).
+
+carrier-app
+- Назначение: отправка координат перевозчика в Kafka каждые 30 секунд.
+- Запуск: services/carrier-app (go build/run).
+- Управление: конфигурация Kafka; логи; возможно rate-limiting на стороне приложения.
+
+web/operator-panel (SPA)
+- Назначение: UI для оператора (просмотр рейсов, карта, переназначение).
+- Запуск:
+  - Локально: npm run dev в web/operator-panel.
+  - Сборка: npm run build; предпросмотр: npm run preview.
+- Конфигурация:
+  - VITE_API_BASE_URL — базовый URL operator-api.
+  - VITE_TRACKING_BASE_URL — базовый URL tracking-service.
+  - VITE_TRACKING_WS_URL — ws://… для WebSocket карты (если не задан, формируется из VITE_TRACKING_BASE_URL).
+- Наблюдение/управление: через браузер; остановка dev-сервера Ctrl+C.
+
+docker-compose (локальные зависимости)
+- Файл: docker-compose.yml — поднимает PostgreSQL, Redpanda.
+- Запуск: docker compose up -d; остановка: docker compose down.
+- Эндпоинты:
+  - PostgreSQL: localhost:5432 (user/pass, DB trip_db).
+  - Kafka: localhost:9092.
+  - Jaeger UI: http://localhost:16686; OTLP HTTP: http://localhost:4318.
+
+Kubernetes/Helm (в проде)
+- Чарты в charts/* для каждого сервиса: deployment, service, ingress (где нужно), secret, networkpolicy.
+- Обновление: helm upgrade --install <release> ./charts/<service>.
+- Конфигурация: values.yaml — порты, образ, Kafka/DB/OTLP, ingress TLS/mTLS.
+- Масштабирование/устойчивость: HPA, PDB, terminationGracePeriodSeconds, probes.
+
+Операции (общее)
+- Запуск сервиса:
+  - Установить зависимости, задать env (DB_DSN, KAFKA_BROKERS, …), go build/run.
+  - Проверить /healthz и /readyz.
+- Наблюдение:
+  - Логи процесса.
+  - /metrics (Prometheus), трассировки в Jaeger (OTLP).
+- Остановка:
+  - Ctrl+C локально; в Kubernetes — kubectl rollout restart/scale/stop по стандартным операциям.
+- Добавление функциональности:
+  - Внести изменения в соответствующий сервис (cmd/internal), учесть DLQ и graceful shutdown.
+  - Обновить Helm values/секреты при новых конфигурациях.

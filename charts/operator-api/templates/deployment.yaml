@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-operator-api
+  labels:
+    app: operator-api
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: operator-api
+  template:
+    metadata:
+      labels:
+        app: operator-api
+    spec:
+      containers:
+      - name: operator-api
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8090
+        env:
+        - name: SERVER_PORT
+          value: "{{ .Values.service.port }}"
+        - name: SERVICES_REFERENCEURL
+          value: "{{ .Values.services.referenceURL }}"
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-operator-api-secrets
+              key: operator_dsn
+        - name: DB_TRIPDSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-operator-api-secrets
+              key: trip_dsn
+        - name: DB_BATCHDSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-operator-api-secrets
+              key: batch_dsn
+        - name: DB_REFERENCEDSN
+          value: ""
+        - name: KAFKA_BROKERS
+          value: "{{ .Values.kafka.brokers | join \",\" }}"
+        - name: KAFKA_COMMANDTOPIC
+          value: "{{ .Values.kafka.commandTopic }}"
+        - name: KAFKA_TIMEOUT
+          value: "{{ .Values.kafka.timeout }}"
+        - name: OTLP_ENDPOINT
+          value: "{{ .Values.otlp.endpoint }}"
+        - name: AUTH_HS256SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-operator-api-secrets
+              key: auth_hs256secret
+        - name: REF_MTLS_ENABLED
+          value: "{{ .Values.refmtls.enabled }}"
+        - name: REF_MTLS_CERTPATH
+          value: "/etc/operator-api/ref-mtls/tls.crt"
+        - name: REF_MTLS_KEYPATH
+          value: "/etc/operator-api/ref-mtls/tls.key"
+        - name: REF_MTLS_CAPATH
+          value: "/etc/operator-api/ref-mtls/ca.crt"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8090
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8090
+          initialDelaySeconds: 5
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        volumeMounts:
+        - name: ref-mtls
+          mountPath: /etc/operator-api/ref-mtls
+          readOnly: true
+      volumes:
+      - name: ref-mtls
+        secret:
+          secretName: {{ .Release.Name }}-operator-api-secrets
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values: ["operator-api"]
+            topologyKey: "kubernetes.io/hostname"

@@ -1,0 +1,1 @@
+ALTER TABLE trips ALTER COLUMN carrier_id DROP NOT NULL;

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-order-service
+  labels:
+    app: order-service
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SERVER_PORT
+          value: "{{ .Values.service.port }}"
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-order-service-secrets
+              key: db_dsn
+        - name: KAFKA_BROKERS
+          value: "{{ .Values.kafka.brokers | join \",\" }}"
+        - name: KAFKA_TOPIC
+          value: "{{ .Values.kafka.topic }}"
+        - name: KAFKA_GROUPID
+          value: "{{ .Values.kafka.groupId }}"
+        - name: KAFKA_CONSUMERTOPICS
+          value: "{{ .Values.kafka.consumerTopics | join \",\" }}"
+        - name: OTLP_ENDPOINT
+          value: "{{ .Values.otlp.endpoint }}"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+

@@ -1,0 +1,61 @@
+name: Build and Push Images
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: order-service
+            path: services/order-service
+          - name: routing-service
+            path: services/routing-service
+          - name: reassignment-service
+            path: services/reassignment-service
+          - name: reference-service
+            path: services/reference-service
+          - name: batching-service
+            path: services/batching-service
+          - name: tracking-service
+            path: services/tracking-service
+          - name: mobile-gateway
+            path: services/mobile-gateway
+          - name: operator-api
+            path: services/operator-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (PR)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.path }}
+          file: ${{ matrix.service.path }}/Dockerfile
+          push: false
+          tags: ghcr.io/${{ github.repository_owner }}/bel-parcel-${{ matrix.service.name }}:pr-${{ github.event.pull_request.number }}
+      - name: Build and push (main)
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.path }}
+          file: ${{ matrix.service.path }}/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/bel-parcel-${{ matrix.service.name }}:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/bel-parcel-${{ matrix.service.name }}:latest

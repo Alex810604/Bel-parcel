@@ -1,0 +1,39 @@
+name: Integration Tests
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      E2E: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.2"
+      - name: Start infra (Postgres & Kafka)
+        run: |
+          docker compose -f docker-compose.yml up -d postgres kafka kafka-init
+      - name: Order Service integration
+        working-directory: services/order-service
+        run: go test -tags=integration ./test -v
+      - name: Routing Service integration
+        working-directory: services/routing-service
+        run: go test -tags=integration ./test -v
+      - name: Reassignment Service integration
+        working-directory: services/reassignment-service
+        run: go test -tags=integration ./test -v
+      - name: Tracking Service integration
+        working-directory: services/tracking-service
+        run: go test -tags=integration ./test -v
+      - name: Mobile Gateway integration
+        working-directory: services/mobile-gateway
+        run: go test -tags=integration ./test -v
+      - name: Tear down infra
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml down -v

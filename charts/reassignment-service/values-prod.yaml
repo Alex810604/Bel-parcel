@@ -1,0 +1,45 @@
+replicaCount: 2
+image:
+  repository: registry.example.com/reassignment-service
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  port: 8082
+ingress:
+  enabled: true
+  host: reassignment.example.com
+  tlsSecretName: reassignment-tls
+  mtls:
+    enabled: true
+    secretName: mtls-client-ca
+kafka:
+  brokers:
+    - kafka:9092
+  timeout: 5s
+  commandTopic: "команды.переназначить"
+  groupId: reassignment-service
+  consumeTopics:
+    - "трипы.назначены"
+    - "трипы.подтверждены"
+    - "трипы.отклонены"
+    - "команды.переназначить"
+worker:
+  interval: 30s
+  confirmationTimeout: 2h
+otlp:
+  endpoint: "http://otel-collector:4318"
+secrets:
+  dbReassignmentDsn: "postgres://user:pass@postgres:5432/reassignment_db?sslmode=disable"
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+monitoring:
+  enabled: true
+  interval: 15s
+  labels:
+    release: prometheus
+  namespace: ""

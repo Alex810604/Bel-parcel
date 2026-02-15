@@ -1,0 +1,50 @@
+groups:
+  - name: reference-service
+    rules:
+      - alert: ReferenceServiceHighErrorRate
+        expr: |
+          rate(reference_requests_total{code=~"5.."}[5m])
+          /
+          rate(reference_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: reference-service
+        annotations:
+          summary: "High error rate in reference-service"
+          description: "{{ $value | humanizePercentage }} of requests are failing (status 5xx)"
+          runbook_url: "https://wiki.bel-parcel.com/runbooks/reference-service-high-error"
+
+      - alert: ReferenceServiceSlowRequests
+        expr: |
+          histogram_quantile(0.95, rate(reference_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: reference-service
+        annotations:
+          summary: "Slow requests in reference-service"
+          description: "95th percentile request duration is {{ $value }} seconds (>1s threshold)"
+          runbook_url: "https://wiki.bel-parcel.com/runbooks/reference-service-slow-requests"
+
+      - alert: ReferenceServiceKafkaFailures
+        expr: increase(reference_events_failed_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+          service: reference-service
+        annotations:
+          summary: "Kafka publication failures in reference-service"
+          description: "{{ $value }} events failed to publish in last 5 minutes"
+          runbook_url: "https://wiki.bel-parcel.com/runbooks/reference-service-kafka-failures"
+
+      - alert: ReferenceServiceNoTraffic
+        expr: rate(reference_requests_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: reference-service
+        annotations:
+          summary: "No traffic to reference-service"
+          description: "No requests received in last 10 minutes"
+          runbook_url: "https://wiki.bel-parcel.com/runbooks/reference-service-no-traffic"

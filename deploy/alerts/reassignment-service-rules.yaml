@@ -1,0 +1,24 @@
+groups:
+  - name: reassignment-service
+    rules:
+      - alert: ReassignmentOutboxGrowing
+        expr: reassignment_outbox_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: Outbox queue size greater than 100 for 5 minutes
+      - alert: ReassignmentDLQNotEmpty
+        expr: reassignment_dlq_size > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: Dead letter queue has entries
+      - alert: HighTimeoutRate
+        expr: rate(confirmation_timeouts_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: High rate of confirmation timeouts

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-alertmanager-config
+data:
+  alertmanager.yml: |
+{{ toYaml .Values.config | indent 4 }}

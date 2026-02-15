@@ -1,0 +1,133 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: bp-postgres
+    environment:
+      POSTGRES_USER: "user"
+      POSTGRES_PASSWORD: "pass"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/initdb:/docker-entrypoint-initdb.d
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: bp-kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+
+  reference-service:
+    build:
+      context: ./services/reference-service
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_DSN=postgres://user:pass@reference-db:5432/reference_db?sslmode=disable
+       - KAFKA_BROKERS=kafka:9092
+       - KAFKA_TOPIC=events.reference_updated
+      - SERVER_PORT=8084
+      - AUTH_HS256SECRET=${AUTH_HS256SECRET:-secret}
+      - AUTH_ISSUER=bp
+      - AUTH_AUDIENCE=operator
+    depends_on:
+      - reference-db
+      - kafka
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8084/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  reference-db:
+    image: postgres:15
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: reference_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - reference-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  operator-api:
+    build:
+      context: ./services/operator-api
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    environment:
+      - DB_DSN=postgres://user:pass@postgres:5432/operator_db?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_COMMANDTOPIC=commands.trip.reassign
+      - KAFKA_GROUPID=operator-api-sync
+      - KAFKA_SYNCTOPICS=trips.updated,batches.updated
+      - SERVICES_REFERENCEURL=http://reference-service:8084
+      - AUTH_HS256SECRET=${AUTH_HS256SECRET:-secret}
+      - AUTH_ISSUER=bp
+      - AUTH_AUDIENCE=operator
+    depends_on:
+      - postgres
+      - kafka
+      - reference-service
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  batching-service:
+    build:
+      context: ./services/batching-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVER_PORT=8083
+      - DB_DSN=postgres://user:pass@postgres:5432/batching_db?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_GROUPID=batching-service
+      - KAFKA_CONSUMETOPICS=orders.created,events.reference_updated,events.batch_delivered_to_pvp
+      - KAFKA_PRODUCETOPIC=batches.formed
+      - KAFKA_DLQTOPIC=dlq.batching
+    depends_on:
+      - postgres
+      - kafka
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8083/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  kafka-init:
+    image: bitnami/kafka:latest
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/bash","-lc"]
+    command: >
+      "kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic events.reference_updated --partitions 3 --replication-factor 1 &&
+       kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic commands.trip.reassign --partitions 3 --replication-factor 1 &&
+       kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic orders.created --partitions 3 --replication-factor 1 &&
+       kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic batches.formed --partitions 3 --replication-factor 1 &&
+       kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic dlq.batching --partitions 3 --replication-factor 1"
+
+volumes:
+  reference-db-data:

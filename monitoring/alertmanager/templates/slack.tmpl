@@ -1,0 +1,2 @@
+{{ define "slack.title" }}{{ .CommonAnnotations.summary }}{{ end }}
+{{ define "slack.text" }}{{ range .Alerts }}*{{ .Labels.alertname }}* {{ .Annotations.description }}{{ "\n" }}{{ end }}{{ end }}

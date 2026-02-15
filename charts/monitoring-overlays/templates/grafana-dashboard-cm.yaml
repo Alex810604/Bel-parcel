@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-reference-service-dashboard
+  labels:
+    grafana_dashboard: "1"
+data:
+  reference-service.json: |
+{{ .Files.Get "dashboards/reference-service.json" | indent 4 }}

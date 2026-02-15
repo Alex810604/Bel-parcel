@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-reassignment-service
+  labels:
+    app: reassignment-service
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: reassignment-service
+  template:
+    metadata:
+      labels:
+        app: reassignment-service
+    spec:
+      containers:
+      - name: reassignment-service
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SERVER_PORT
+          value: "{{ .Values.service.port }}"
+        - name: DB_REASSIGNMENTDSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-reassignment-service-secrets
+              key: db_reassignment_dsn
+        - name: WORKER_INTERVAL
+          value: "{{ .Values.worker.interval }}"
+        - name: WORKER_CONFIRMATION_TIMEOUT
+          value: "{{ .Values.worker.confirmationTimeout }}"
+        - name: KAFKA_BROKERS
+          value: "{{ .Values.kafka.brokers | join \",\" }}"
+        - name: KAFKA_TIMEOUT
+          value: "{{ .Values.kafka.timeout }}"
+        - name: KAFKA_COMMANDTOPIC
+          value: "{{ .Values.kafka.commandTopic }}"
+        - name: KAFKA_GROUPID
+          value: "{{ .Values.kafka.groupId }}"
+        - name: KAFKA_CONSUMETOPICS
+          value: "{{ .Values.kafka.consumeTopics | join \",\" }}"
+        - name: OTLP_ENDPOINT
+          value: "{{ .Values.otlp.endpoint }}"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8082
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8082
+          initialDelaySeconds: 5
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values: ["reassignment-service"]
+            topologyKey: "kubernetes.io/hostname"

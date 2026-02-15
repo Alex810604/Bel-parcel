@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+rule_files:
+  - "alerts.yml"
+scrape_configs:
+  - job_name: 'reference-service'
+    static_configs:
+      - targets: ['reference-service:8084']
+    metrics_path: '/metrics'
+  - job_name: 'operator-api'
+    static_configs:
+      - targets: ['operator-api:8090']
+    metrics_path: '/metrics'
+  - job_name: 'batching-service'
+    static_configs:
+      - targets: ['batching-service:8082']
+    metrics_path: '/metrics'
+  - job_name: 'routing-service'
+    static_configs:
+      - targets: ['routing-service:8081']
+    metrics_path: '/metrics'
+  - job_name: 'tracking-service'
+    static_configs:
+      - targets: ['tracking-service:8087']
+    metrics_path: '/metrics'
+  - job_name: 'reassignment-service'
+    static_configs:
+      - targets: ['reassignment-service:8083']
+    metrics_path: '/metrics'
+  - job_name: 'mobile-gateway'
+    static_configs:
+      - targets: ['mobile-gateway:8085']
+    metrics_path: '/metrics'

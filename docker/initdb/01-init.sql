@@ -1,0 +1,4 @@
+CREATE DATABASE trip_db;
+CREATE DATABASE batch_db;
+CREATE DATABASE batching_db;
+CREATE DATABASE reference_db;
