@@ -14,6 +14,9 @@ kafka:
   timeout: 5s
 otlp:
   endpoint: ""
+monitoring:
+  enabled: false
+  interval: 30s
 ingress:
   enabled: true
   host: operator.example.com

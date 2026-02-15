@@ -1,0 +1,16 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-operator-api
+  labels:
+    app: operator-api
+spec:
+  selector:
+    matchLabels:
+      app: operator-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.monitoring.interval }}
+{{- end }}
