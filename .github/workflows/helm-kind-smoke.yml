@@ -89,6 +89,27 @@ jobs:
           helm repo update
           helm upgrade --install monitoring prometheus-community/kube-prometheus-stack --version 58.3.1 -f charts/monitoring-overlays/values-kube-prometheus-stack.yaml
           helm upgrade --install alertmanager charts/alertmanager --values charts/alertmanager/values.yaml
+      - name: Install Kubernetes Dashboard and publish admin token
+        run: |
+          helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard
+          helm repo update
+          helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard -n kubernetes-dashboard --create-namespace
+          kubectl -n kubernetes-dashboard create serviceaccount admin-user || true
+          kubectl -n kubernetes-dashboard create clusterrolebinding admin-user-binding --clusterrole=cluster-admin --serviceaccount=kubernetes-dashboard:admin-user || true
+          TOKEN=$(kubectl -n kubernetes-dashboard create token admin-user 2>/dev/null || kubectl -n kubernetes-dashboard get secret "$(kubectl -n kubernetes-dashboard get secret | awk '/admin-user/{print $1}')" -o go-template='{{.data.token | base64decode}}')
+          echo "Dashboard admin token:"
+          echo "$TOKEN"
+          {
+            echo "### Kubernetes Dashboard"
+            echo ""
+            echo "- Port-forward: kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard 8443:443"
+            echo "- URL: https://localhost:8443/"
+            echo "- Admin token:"
+            echo ""
+            echo '```'
+            echo "$TOKEN"
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
       - name: Deploy Redpanda (single-node)
         run: |
           cat > redpanda.yaml <<'EOF'
