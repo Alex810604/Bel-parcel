@@ -11,3 +11,6 @@ postgres:
   db: reference_db
   user: user
   password: pass
+migrations:
+  enabled: false
+  scripts: []

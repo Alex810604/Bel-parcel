@@ -9,7 +9,7 @@ services:
   referenceURL: "https://reference.prod.example.com"
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   commandTopic: commands.trip.reassign
   timeout: 5s
 otlp:
@@ -26,15 +26,7 @@ ingress:
     secretName: ""
 secrets:
   operatorDsn: postgres://user:pass@postgres:5432/operator_db?sslmode=disable
-  tripDsn: postgres://user:pass@postgres:5432/trip_db?sslmode=disable
-  batchDsn: postgres://user:pass@postgres:5432/batch_db?sslmode=disable
   authHs256Secret: ""
-  refMtls:
-    tlsCrt: ""
-    tlsKey: ""
-    caCrt: ""
-refmtls:
-  enabled: "false"
 resources:
   requests:
     memory: "128Mi"

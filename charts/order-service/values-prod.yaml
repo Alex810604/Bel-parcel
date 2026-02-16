@@ -1,0 +1,14 @@
+service:
+  port: 8080
+kafka:
+  brokers:
+    - redpanda:9092
+secrets:
+  dbDsn: postgres://user:pass@orderdb:5432/order_db?sslmode=disable
+ingress:
+  enabled: true
+  host: order.example.com
+  tlsSecretName: ""
+monitoring:
+  enabled: true
+  interval: 30s

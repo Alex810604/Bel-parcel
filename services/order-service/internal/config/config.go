@@ -33,7 +33,7 @@ func Load() (*Config, error) {
 	// Defaults
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("db.dsn", "postgres://user:pass@localhost:5432/order_db?sslmode=disable")
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.topic", "orders.created")
 	v.SetDefault("kafka.groupid", "order-service")
 	v.SetDefault("kafka.consumertopics", []string{

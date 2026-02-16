@@ -1,0 +1,14 @@
+service:
+  port: 8087
+kafka:
+  brokers:
+    - redpanda:9092
+secrets:
+  dsn: postgres://user:pass@trackingdb:5432/tracking_db?sslmode=disable
+ingress:
+  enabled: true
+  host: tracking.example.com
+  tlsSecretName: ""
+monitoring:
+  enabled: true
+  interval: 30s

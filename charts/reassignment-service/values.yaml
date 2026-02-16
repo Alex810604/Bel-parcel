@@ -14,14 +14,14 @@ ingress:
     secretName: ""
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   timeout: 5s
   commandTopic: commands.trip.reassign
   groupId: reassignment-service
   consumeTopics:
     - trips.assigned
     - trips.confirmed
-    - trips.declined
+    - trips.rejected
     - commands.trip.reassign
 worker:
   interval: 1m

@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 	v := viper.New()
 	v.SetDefault("server.port", "8088")
 	v.SetDefault("db.dsn", "postgres://user:pass@localhost:5432/mobile_gateway_db?sslmode=disable")
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
 	v.SetDefault("kafka.topicpickedup", "events.batch_picked_up")
 	v.SetDefault("kafka.topicdeliveredtopvp", "events.batch_delivered_to_pvp")

@@ -35,18 +35,6 @@ spec:
             secretKeyRef:
               name: {{ .Release.Name }}-operator-api-secrets
               key: operator_dsn
-        - name: DB_TRIPDSN
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Release.Name }}-operator-api-secrets
-              key: trip_dsn
-        - name: DB_BATCHDSN
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Release.Name }}-operator-api-secrets
-              key: batch_dsn
-        - name: DB_REFERENCEDSN
-          value: ""
         - name: KAFKA_BROKERS
           value: "{{ .Values.kafka.brokers | join \",\" }}"
         - name: KAFKA_COMMANDTOPIC
@@ -60,14 +48,6 @@ spec:
             secretKeyRef:
               name: {{ .Release.Name }}-operator-api-secrets
               key: auth_hs256secret
-        - name: REF_MTLS_ENABLED
-          value: "{{ .Values.refmtls.enabled }}"
-        - name: REF_MTLS_CERTPATH
-          value: "/etc/operator-api/ref-mtls/tls.crt"
-        - name: REF_MTLS_KEYPATH
-          value: "/etc/operator-api/ref-mtls/tls.key"
-        - name: REF_MTLS_CAPATH
-          value: "/etc/operator-api/ref-mtls/ca.crt"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -80,14 +60,6 @@ spec:
           initialDelaySeconds: 5
         resources:
 {{ toYaml .Values.resources | indent 10 }}
-        volumeMounts:
-        - name: ref-mtls
-          mountPath: /etc/operator-api/ref-mtls
-          readOnly: true
-      volumes:
-      - name: ref-mtls
-        secret:
-          secretName: {{ .Release.Name }}-operator-api-secrets
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

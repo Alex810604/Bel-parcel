@@ -10,7 +10,7 @@ ingress:
   host: routing.example.com
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   timeout: 5s
   groupId: routing-service
   consumeTopics:
@@ -28,3 +28,6 @@ resources:
   limits:
     memory: "256Mi"
     cpu: "200m"
+monitoring:
+  enabled: false
+  interval: 30s

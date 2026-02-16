@@ -1,0 +1,14 @@
+service:
+  port: 8081
+kafka:
+  brokers:
+    - redpanda:9092
+secrets:
+  tripDsn: postgres://user:pass@tripdb:5432/trip_db?sslmode=disable
+ingress:
+  enabled: true
+  host: routing.example.com
+  tlsSecretName: ""
+monitoring:
+  enabled: true
+  interval: 30s

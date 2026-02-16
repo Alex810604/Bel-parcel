@@ -1,0 +1,19 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-routing-service
+  labels:
+    app: routing-service
+spec:
+  selector:
+    matchLabels:
+      app: routing-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.monitoring.interval | default "30s" }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}

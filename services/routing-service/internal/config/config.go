@@ -31,7 +31,7 @@ func Load() (*Config, error) {
 
 	v.SetDefault("server.port", "8081")
 	v.SetDefault("db.tripdsn", "postgres://user:pass@localhost:5432/trip_db?sslmode=disable")
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
 	v.SetDefault("kafka.groupid", "routing-service")
 	v.SetDefault("kafka.consumetopics", []string{"batches.formed", "commands.trip.reassign", "events.batch_picked_up", "events.batch_delivered_to_pvp", "events.carrier_location", "events.reference_updated"})

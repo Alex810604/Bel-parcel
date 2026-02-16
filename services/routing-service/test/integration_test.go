@@ -21,7 +21,6 @@ func TestRoutingService_DockerCompose(t *testing.T) {
 	cmd.Env = append(os.Environ(),
 		"SERVER_PORT=8081",
 		"DB_TRIPDSN=postgres://user:pass@localhost:5432/trip_db?sslmode=disable",
-		"DB_REFDSN=postgres://user:pass@localhost:5432/reference_db?sslmode=disable",
 		"KAFKA_BROKERS=localhost:9092",
 		"KAFKA_TIMEOUT=5s",
 		"KAFKA_GROUPID=routing-service",

@@ -1,0 +1,19 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-order-service
+  labels:
+    app: order-service
+spec:
+  selector:
+    matchLabels:
+      app: order-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.monitoring.interval | default "30s" }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}

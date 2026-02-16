@@ -1,0 +1,14 @@
+service:
+  port: 8083
+kafka:
+  brokers:
+    - redpanda:9092
+secrets:
+  dbDsn: postgres://user:pass@batchdb:5432/batching_db?sslmode=disable
+ingress:
+  enabled: true
+  host: batching.example.com
+  tlsSecretName: ""
+monitoring:
+  enabled: true
+  interval: 30s

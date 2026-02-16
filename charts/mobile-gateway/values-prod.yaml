@@ -1,0 +1,17 @@
+service:
+  port: 8088
+kafka:
+  brokers:
+    - redpanda:9092
+secrets:
+  dbDsn: postgres://user:pass@mobilegwdb:5432/mobile_gateway_db?sslmode=disable
+  authSecret: ""
+  authIssuer: "bp"
+  authAudience: "operator"
+ingress:
+  enabled: true
+  host: mobile.example.com
+  tlsSecretName: ""
+monitoring:
+  enabled: true
+  interval: 30s

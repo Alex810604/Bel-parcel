@@ -7,7 +7,7 @@ service:
   port: 8087
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   groupId: tracking-service
   topic: events.carrier_location
   timeout: 5s
@@ -31,3 +31,6 @@ tracking:
   port: 8087
   env:
     KAFKA_TOPIC: "events.carrier_location"
+monitoring:
+  enabled: false
+  interval: 30s

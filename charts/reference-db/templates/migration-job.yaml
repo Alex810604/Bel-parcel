@@ -1,0 +1,25 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-migrations
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: migrator
+        image: postgres:16-alpine
+        env:
+        - name: PGURI
+          value: "postgres://postgres:postgres@{{ .Release.Name }}-reference-db:{{ .Values.service.port }}/{{ .Values.postgres.db }}?sslmode=disable"
+        command: ["/bin/sh","-lc"]
+        args:
+          - >
+            for s in {{- range $i, $s := .Values.migrations.scripts -}} '{{ tpl $s $ | replace "'" "'\"'\"'" }}' {{- end }} ; do
+              echo "$s" | psql "$PGURI";
+            done
+{{- end }}

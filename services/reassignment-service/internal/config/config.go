@@ -38,11 +38,11 @@ func Load() (*Config, error) {
 	v.SetDefault("db.reassignmentdsn", "postgres://user:pass@localhost:5432/reassignment_db?sslmode=disable")
 	v.SetDefault("worker.interval", 1*time.Minute)
 	v.SetDefault("worker.confirmation_timeout", 2*time.Hour)
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
-	v.SetDefault("kafka.commandtopic", "команды.переназначить")
+	v.SetDefault("kafka.commandtopic", "commands.trip.reassign")
 	v.SetDefault("kafka.groupid", "reassignment-service")
-	v.SetDefault("kafka.consumetopics", []string{"трипы.назначены", "трипы.подтверждены", "трипы.отклонены", "команды.переназначить"})
+	v.SetDefault("kafka.consumetopics", []string{"trips.assigned", "trips.confirmed", "trips.rejected", "commands.trip.reassign"})
 	v.SetDefault("otlp.endpoint", "")
 
 	// Config file

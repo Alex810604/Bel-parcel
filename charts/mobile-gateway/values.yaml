@@ -7,7 +7,7 @@ service:
   port: 8088
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   timeout: 5s
   topicPickedUp: events.batch_picked_up
   topicDeliveredToPVP: events.batch_delivered_to_pvp
@@ -19,6 +19,9 @@ secrets:
   authSecret: ""
   authIssuer: ""
   authAudience: ""
+monitoring:
+  enabled: false
+  interval: 30s
 resources:
   requests:
     memory: "128Mi"

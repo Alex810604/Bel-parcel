@@ -7,7 +7,7 @@ service:
   port: 8083
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   groupId: batching-service
   consumeTopics:
     - orders.created
@@ -24,4 +24,3 @@ resources:
   limits:
     memory: "256Mi"
     cpu: "200m"
-

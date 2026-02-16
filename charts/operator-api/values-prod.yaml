@@ -1,0 +1,22 @@
+service:
+  port: 8090
+kafka:
+  brokers:
+    - redpanda:9092
+otlp:
+  endpoint: ""
+ingress:
+  enabled: true
+  host: operator.example.com
+  tlsSecretName: ""
+secrets:
+  operatorDsn: postgres://user:pass@operatordb:5432/operator_db?sslmode=disable
+  authHs256Secret: ""
+services:
+  routingURL: "http://routing-service:8081"
+  batchingURL: "http://batching-service:8083"
+  orderURL: "http://order-service:8080"
+  referenceURL: "http://reference-service:8084"
+monitoring:
+  enabled: true
+  interval: 30s

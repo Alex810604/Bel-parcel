@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 
 	v.SetDefault("server.port", "8083")
 	v.SetDefault("db.dsn", "postgres://user:pass@localhost:5432/batch_db?sslmode=disable")
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
 	v.SetDefault("kafka.groupid", "batching-service")
 	v.SetDefault("kafka.consumetopics", []string{"orders.created", "events.reference_updated", "events.batch_delivered_to_pvp"})

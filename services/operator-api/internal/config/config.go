@@ -35,12 +35,6 @@ type Config struct {
 		Issuer      string
 		Audience    string
 	}
-	RefMTLS struct {
-		Enabled  bool
-		CertPath string
-		KeyPath  string
-		CAPath   string
-	}
 }
 
 func Load() (*Config, error) {
@@ -51,7 +45,7 @@ func Load() (*Config, error) {
 	v.SetDefault("services.batchingurl", "http://localhost:8082")
 	v.SetDefault("services.orderurl", "http://localhost:8083")
 	v.SetDefault("services.referenceurl", "http://localhost:8084")
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
 	v.SetDefault("kafka.commandtopic", "commands.trip.reassign")
 	v.SetDefault("kafka.groupid", "operator-api-sync")
@@ -60,10 +54,6 @@ func Load() (*Config, error) {
 	v.SetDefault("auth.hs256secret", "")
 	v.SetDefault("auth.issuer", "")
 	v.SetDefault("auth.audience", "")
-	v.SetDefault("refmtls.enabled", false)
-	v.SetDefault("refmtls.certpath", "")
-	v.SetDefault("refmtls.keypath", "")
-	v.SetDefault("refmtls.capath", "")
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(".")

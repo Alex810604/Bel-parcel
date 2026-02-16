@@ -24,13 +24,50 @@ jobs:
         run: kubectl run curl --image=curlimages/curl:8.5.0 --restart=Never --command -- sleep 3600
       - name: Deploy Postgres databases
         run: |
-          helm upgrade --install refdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=reference_db
-          helm upgrade --install tripdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=trip_db
-          helm upgrade --install trackingdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=tracking_db
-          helm upgrade --install batchdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=batch_db
-          helm upgrade --install orderdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=order_db
-          helm upgrade --install operatordb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=operator_db
-          helm upgrade --install mobilegwdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=mobile_gateway_db
+          helm upgrade --install refdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=reference_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS pickup_points(id TEXT PRIMARY KEY,name TEXT NOT NULL,address TEXT,location_lat DOUBLE PRECISION,location_lng DOUBLE PRECISION,is_hub BOOLEAN DEFAULT false,created_at TIMESTAMPTZ DEFAULT NOW(),updated_at TIMESTAMPTZ DEFAULT NOW());" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS carriers(id TEXT PRIMARY KEY,name TEXT NOT NULL,is_active BOOLEAN DEFAULT true,last_seen TIMESTAMPTZ,created_at TIMESTAMPTZ DEFAULT NOW(),updated_at TIMESTAMPTZ DEFAULT NOW());" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS warehouses(id TEXT PRIMARY KEY,name TEXT NOT NULL,address TEXT,location_lat DOUBLE PRECISION,location_lng DOUBLE PRECISION,created_at TIMESTAMPTZ DEFAULT NOW(),updated_at TIMESTAMPTZ DEFAULT NOW());" \
+            --set-string migrations.scripts[3]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,status TEXT DEFAULT 'pending',attempts INT DEFAULT 0,last_error TEXT,next_attempt_time TIMESTAMPTZ DEFAULT NOW(),created_at TIMESTAMPTZ DEFAULT NOW());" \
+            --set-string migrations.scripts[4]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id,occurred_at));"
+          helm upgrade --install tripdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=trip_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS carrier_positions(carrier_id UUID PRIMARY KEY,latitude DOUBLE PRECISION NOT NULL,longitude DOUBLE PRECISION NOT NULL,last_seen TIMESTAMPTZ NOT NULL);" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS carrier_activity_cache(carrier_id UUID PRIMARY KEY,is_active BOOLEAN NOT NULL DEFAULT true,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS processed_events(event_id UUID PRIMARY KEY,event_type TEXT NOT NULL,processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[3]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,headers JSONB,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),next_attempt_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(event_type,correlation_id));" \
+            --set-string migrations.scripts[4]="CREATE INDEX IF NOT EXISTS idx_outbox_next_attempt ON outbox_events(next_attempt_time);" \
+            --set-string migrations.scripts[5]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id));" \
+            --set-string migrations.scripts[6]="CREATE TABLE IF NOT EXISTS dead_letter_queue(id UUID PRIMARY KEY,source_id UUID NOT NULL,event_type TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,last_error TEXT,attempts INT NOT NULL,inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),process_status TEXT NOT NULL DEFAULT 'new');"
+          helm upgrade --install trackingdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=tracking_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS active_trips(trip_id TEXT PRIMARY KEY,carrier_id TEXT NOT NULL,origin_lat DOUBLE PRECISION NOT NULL,origin_lng DOUBLE PRECISION NOT NULL,destination_lat DOUBLE PRECISION NOT NULL,destination_lng DOUBLE PRECISION NOT NULL,assigned_at TIMESTAMPTZ NOT NULL,estimated_duration INTERVAL NOT NULL,status TEXT NOT NULL DEFAULT 'assigned');" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS carrier_locations(trip_id TEXT NOT NULL,lat DOUBLE PRECISION NOT NULL,lng DOUBLE PRECISION NOT NULL,recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),deviation_meters DOUBLE PRECISION,estimated_arrival TIMESTAMPTZ,PRIMARY KEY (trip_id, recorded_at));" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS active_alerts(alert_id UUID PRIMARY KEY,alert_type TEXT NOT NULL,trip_id TEXT NOT NULL,carrier_id TEXT NOT NULL,message TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),resolved_at TIMESTAMPTZ,severity TEXT NOT NULL DEFAULT 'warning');" \
+            --set-string migrations.scripts[3]="CREATE TABLE IF NOT EXISTS websocket_sessions(session_id TEXT PRIMARY KEY,operator_id TEXT,connected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_heartbeat TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[4]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,next_attempt_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(event_type,correlation_id));" \
+            --set-string migrations.scripts[5]="CREATE INDEX IF NOT EXISTS idx_outbox_next_attempt ON outbox_events(next_attempt_time);" \
+            --set-string migrations.scripts[6]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id));" \
+            --set-string migrations.scripts[7]="CREATE TABLE IF NOT EXISTS dead_letter_queue(id UUID PRIMARY KEY,source_id UUID NOT NULL,event_type TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,last_error TEXT,attempts INT NOT NULL,inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),process_status TEXT NOT NULL DEFAULT 'pending');"
+          helm upgrade --install batchdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=batch_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS batch_orders(batch_id UUID NOT NULL,order_id UUID NOT NULL,destination_pvp_id UUID,PRIMARY KEY (batch_id, order_id));" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS ref_warehouses(warehouse_id UUID PRIMARY KEY,name TEXT NOT NULL,latitude DOUBLE PRECISION NOT NULL,longitude DOUBLE PRECISION NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS ref_pickup_points(pvp_id UUID PRIMARY KEY,name TEXT NOT NULL,latitude DOUBLE PRECISION NOT NULL,longitude DOUBLE PRECISION NOT NULL,is_hub BOOLEAN NOT NULL DEFAULT false,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[3]="CREATE INDEX IF NOT EXISTS idx_ref_pickup_points_is_hub ON ref_pickup_points(is_hub);" \
+            --set-string migrations.scripts[4]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,headers JSONB,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),next_attempt_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(event_type,correlation_id));" \
+            --set-string migrations.scripts[5]="CREATE INDEX IF NOT EXISTS idx_outbox_next_attempt ON outbox_events(next_attempt_time);" \
+            --set-string migrations.scripts[6]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id));" \
+            --set-string migrations.scripts[7]="CREATE TABLE IF NOT EXISTS dead_letter_queue(id UUID PRIMARY KEY,source_id UUID NOT NULL,event_type TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,last_error TEXT,attempts INT NOT NULL,inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),process_status TEXT NOT NULL DEFAULT 'new');"
+          helm upgrade --install orderdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=order_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS failed_webhooks(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),order_id UUID NOT NULL,webhook_url TEXT NOT NULL,payload JSONB NOT NULL,attempt_count INTEGER NOT NULL DEFAULT 0,max_attempts INTEGER NOT NULL DEFAULT 5,next_attempt_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,headers JSONB,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(event_type,correlation_id));" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id));"
+          helm upgrade --install operatordb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=operator_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS trips_cache(id TEXT PRIMARY KEY,origin_warehouse_id TEXT,pickup_point_id TEXT,carrier_id TEXT,assigned_at TIMESTAMPTZ,status TEXT,updated_at TIMESTAMPTZ DEFAULT NOW());" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS batches_cache(id TEXT PRIMARY KEY,trip_id TEXT,updated_at TIMESTAMPTZ DEFAULT NOW());" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,headers JSONB,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" \
+            --set-string migrations.scripts[3]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id,occurred_at));"
+          helm upgrade --install mobilegwdb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=mobile_gateway_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,event_id TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,headers JSONB,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(event_type,event_id));" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id));"
           kubectl rollout status statefulset/refdb-reference-db --timeout=120s
           kubectl rollout status statefulset/tripdb-reference-db --timeout=120s
           kubectl rollout status statefulset/trackingdb-reference-db --timeout=120s
@@ -38,6 +75,69 @@ jobs:
           kubectl rollout status statefulset/orderdb-reference-db --timeout=120s
           kubectl rollout status statefulset/operatordb-reference-db --timeout=120s
           kubectl rollout status statefulset/mobilegwdb-reference-db --timeout=120s
+          helm upgrade --install reassigndb charts/reference-db --values charts/reference-db/values.yaml --set image.repository=postgres --set image.tag=16-alpine --set service.port=5432 --set postgres.db=reassignment_db --set migrations.enabled=true \
+            --set-string migrations.scripts[0]="CREATE TABLE IF NOT EXISTS processed_events(event_id TEXT PRIMARY KEY,occurred_at TIMESTAMPTZ NOT NULL);" \
+            --set-string migrations.scripts[1]="CREATE TABLE IF NOT EXISTS pending_confirmations(trip_id TEXT PRIMARY KEY,batch_id TEXT NOT NULL,carrier_id TEXT NOT NULL,assigned_at TIMESTAMPTZ NOT NULL,timeout_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending');" \
+            --set-string migrations.scripts[2]="CREATE TABLE IF NOT EXISTS outbox_events(id UUID PRIMARY KEY,event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,headers JSONB,occurred_at TIMESTAMPTZ NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INT NOT NULL DEFAULT 0,last_error TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),next_attempt_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(event_type,correlation_id));" \
+            --set-string migrations.scripts[3]="CREATE INDEX IF NOT EXISTS idx_outbox_next_attempt ON outbox_events(next_attempt_time);" \
+            --set-string migrations.scripts[4]="CREATE TABLE IF NOT EXISTS published_events(event_type TEXT NOT NULL,correlation_id TEXT NOT NULL,occurred_at TIMESTAMPTZ NOT NULL,PRIMARY KEY (event_type,correlation_id));" \
+            --set-string migrations.scripts[5]="CREATE TABLE IF NOT EXISTS dead_letter_queue(id UUID PRIMARY KEY,source_id UUID NOT NULL,event_type TEXT NOT NULL,topic TEXT NOT NULL,partition_key TEXT NOT NULL,payload JSONB NOT NULL,last_error TEXT,attempts INT NOT NULL,inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),process_status TEXT NOT NULL DEFAULT 'pending');"
+          kubectl rollout status statefulset/reassigndb-reference-db --timeout=120s
+      - name: Install kube-prometheus-stack and Alertmanager
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install monitoring prometheus-community/kube-prometheus-stack --version 58.3.1 -f charts/monitoring-overlays/values-kube-prometheus-stack.yaml
+          helm upgrade --install alertmanager charts/alertmanager --values charts/alertmanager/values.yaml
+      - name: Deploy Redpanda (single-node)
+        run: |
+          cat > redpanda.yaml <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: redpanda
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: redpanda
+            template:
+              metadata:
+                labels:
+                  app: redpanda
+              spec:
+                containers:
+                - name: redpanda
+                  image: vectorized/redpanda:latest
+                  args: ["redpanda","start","--overprovisioned","--smp","1","--memory","1G","--reserve-memory","0M","--node-id","0","--check=false","--advertise-kafka-addr","redpanda:9092"]
+                  ports:
+                  - containerPort: 9092
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: redpanda
+          spec:
+            selector:
+              app: redpanda
+            ports:
+            - name: kafka
+              protocol: TCP
+              port: 9092
+              targetPort: 9092
+          EOF
+          kubectl apply -f redpanda.yaml
+          kubectl rollout status deployment/redpanda --timeout=120s
+      - name: Create Kafka topics
+        run: |
+          kubectl run rpk --image=vectorized/redpanda:latest --restart=Never --command -- sh -lc '
+            rpk cluster health --brokers redpanda:9092 || true &&
+            for t in events.reference_updated commands.trip.reassign orders.created batches.formed dlq.batching events.batch_picked_up events.batch_delivered_to_pvp events.batch_received_by_pvp events.carrier_location trips.assigned trips.confirmed trips.rejected trips.updated batches.updated; do
+              rpk topic create "$t" --brokers redpanda:9092 --replicas 1 --partitions 3 || true;
+            done &&
+            sleep 5
+          '
+          kubectl delete pod rpk --ignore-not-found=true
       - name: Deploy operator-api
         run: |
           helm upgrade --install operator charts/operator-api \
@@ -45,10 +145,8 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/operator-api \
             --set image.tag=latest \
             --set secrets.operatorDsn=postgres://postgres:postgres@operatordb-reference-db:5432/operator_db?sslmode=disable \
-            --set secrets.tripDsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
-            --set secrets.batchDsn=postgres://postgres:postgres@batchdb-reference-db:5432/batch_db?sslmode=disable \
-            --set refmtls.enabled=\"false\" \
-            --set kafka.brokers[0]=kafka:9092
+            --set kafka.brokers[0]=redpanda:9092 \
+            --set secrets.authHs256Secret=dummy
           kubectl rollout status deployment/operator-operator-api --timeout=120s
       - name: Deploy order-service
         run: |
@@ -57,7 +155,7 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/order-service \
             --set image.tag=latest \
             --set secrets.dbDsn=postgres://postgres:postgres@orderdb-reference-db:5432/order_db?sslmode=disable \
-            --set kafka.brokers[0]=kafka:9092
+            --set kafka.brokers[0]=redpanda:9092
           kubectl rollout status deployment/orders-order-service --timeout=120s
       - name: Deploy routing-service
         run: |
@@ -66,7 +164,7 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/routing-service \
             --set image.tag=latest \
             --set secrets.tripDsn=postgres://postgres:postgres@tripdb-reference-db:5432/trip_db?sslmode=disable \
-            --set kafka.brokers[0]=kafka:9092
+            --set kafka.brokers[0]=redpanda:9092
           kubectl rollout status deployment/routing-routing-service --timeout=120s
       - name: Deploy batching-service
         run: |
@@ -75,7 +173,7 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/batching-service \
             --set image.tag=latest \
             --set secrets.dbDsn=postgres://postgres:postgres@batchdb-reference-db:5432/batch_db?sslmode=disable \
-            --set kafka.brokers[0]=kafka:9092
+            --set kafka.brokers[0]=redpanda:9092
           kubectl rollout status deployment/batching-batching-service --timeout=120s
       - name: Deploy tracking-service
         run: |
@@ -84,7 +182,7 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/tracking-service \
             --set image.tag=latest \
             --set secrets.dsn=postgres://postgres:postgres@trackingdb-reference-db:5432/tracking_db?sslmode=disable \
-            --set kafka.brokers[0]=kafka:9092
+            --set kafka.brokers[0]=redpanda:9092
           kubectl rollout status deployment/tracking-tracking-service --timeout=120s
       - name: Deploy mobile-gateway
         run: |
@@ -93,7 +191,7 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/mobile-gateway \
             --set image.tag=latest \
             --set secrets.dbDsn=postgres://postgres:postgres@mobilegwdb-reference-db:5432/mobile_gateway_db?sslmode=disable \
-            --set kafka.brokers[0]=kafka:9092
+            --set kafka.brokers[0]=redpanda:9092
           kubectl rollout status deployment/mobgw-mobile-gateway --timeout=120s
       - name: Deploy reference-service
         run: |
@@ -103,8 +201,18 @@ jobs:
             --set image.tag=latest \
             --set secrets.dbDsn=postgres://postgres:postgres@refdb-reference-db:5432/reference_db?sslmode=disable \
             --set secrets.authHs256Secret=dummy \
-            --set redpanda.brokers=redpanda:9092
+            --set redpanda.brokers=redpanda:9092 \
+            --set kafka.brokers[0]=redpanda:9092
           kubectl rollout status deployment/refsvc-reference-service --timeout=120s
+      - name: Deploy reassignment-service
+        run: |
+          helm upgrade --install reassignment charts/reassignment-service \
+            --values charts/reassignment-service/values.yaml \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/bel-parcel/reassignment-service \
+            --set image.tag=latest \
+            --set secrets.reassignmentDsn=postgres://postgres:postgres@reassigndb-reference-db:5432/reassignment_db?sslmode=disable \
+            --set kafka.brokers[0]=redpanda:9092
+          kubectl rollout status deployment/reassignment-reassignment-service --timeout=120s
       - name: Smoke healthz all services
         run: |
           kubectl exec curl -- curl -sS operator-operator-api:8090/healthz

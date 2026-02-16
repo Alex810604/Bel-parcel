@@ -10,7 +10,7 @@ ingress:
   host: order.example.com
 kafka:
   brokers:
-    - localhost:9092
+    - redpanda:9092
   topic: orders.created
   groupId: order-service
   consumerTopics:
@@ -29,3 +29,6 @@ resources:
   limits:
     memory: "256Mi"
     cpu: "200m"
+monitoring:
+  enabled: false
+  interval: 30s

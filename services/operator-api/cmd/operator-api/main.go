@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"log/slog"
 	"net/http"
 	"os"
@@ -389,54 +386,18 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func buildHTTPClient(cfg *config.Config) *http.Client {
-	if !cfg.RefMTLS.Enabled {
-		tok := os.Getenv("REF_AUTH_TOKEN")
-		base := &http.Transport{}
-		if tok == "" {
-			return &http.Client{Timeout: 5 * time.Second}
-		}
-		return &http.Client{
-			Timeout: 5 * time.Second,
-			Transport: &authTransport{
-				base:  base,
-				token: tok,
-			},
-		}
-	}
-	tlsCfg := &tls.Config{}
-	if cfg.RefMTLS.CertPath != "" && cfg.RefMTLS.KeyPath != "" {
-		cert, err := tls.LoadX509KeyPair(cfg.RefMTLS.CertPath, cfg.RefMTLS.KeyPath)
-		if err != nil {
-			slog.Error("failed to load mTLS client cert", "error", err)
-			return &http.Client{Timeout: 5 * time.Second}
-		}
-		tlsCfg.Certificates = []tls.Certificate{cert}
-	}
-	if cfg.RefMTLS.CAPath != "" {
-		caPEM, err := ioutil.ReadFile(cfg.RefMTLS.CAPath)
-		if err != nil {
-			slog.Error("failed to read CA file", "error", err)
-		} else {
-			pool := x509.NewCertPool()
-			if ok := pool.AppendCertsFromPEM(caPEM); ok {
-				tlsCfg.RootCAs = pool
-			} else {
-				slog.Error("failed to append CA PEM")
-			}
-		}
-	}
-	transport := &http.Transport{TLSClientConfig: tlsCfg}
+	base := &http.Transport{}
 	tok := os.Getenv("REF_AUTH_TOKEN")
 	if tok == "" {
 		return &http.Client{
 			Timeout:   5 * time.Second,
-			Transport: transport,
+			Transport: base,
 		}
 	}
 	return &http.Client{
 		Timeout: 5 * time.Second,
 		Transport: &authTransport{
-			base:  transport,
+			base:  base,
 			token: tok,
 		},
 	}

@@ -15,6 +15,9 @@ auth:
 secrets:
   authHs256Secret: ""
   dbDsn: ""
+monitoring:
+  enabled: false
+  interval: 30s
 resources: {}
 ingress:
   enabled: true

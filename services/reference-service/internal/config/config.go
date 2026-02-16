@@ -33,7 +33,7 @@ func Load() (*Config, error) {
 
 	v.SetDefault("server.port", "8084")
 	v.SetDefault("db.dsn", "postgres://postgres:postgres@localhost:5432/reference_db?sslmode=disable")
-	v.SetDefault("kafka.brokers", []string{"kafka:9092"})
+	v.SetDefault("kafka.brokers", []string{"redpanda:9092"})
 	v.SetDefault("kafka.timeout", 5*time.Second)
 	v.SetDefault("kafka.eventstopic", "events.reference_updated")
 	v.SetDefault("auth.hs256secret", "")
